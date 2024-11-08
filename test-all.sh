@@ -6,7 +6,7 @@ lab=Lab0
 alernative_dirs="OS-Course-Lab . canvas"
 func_import() {
     name=$1
-    rm $lab/student-number.txt ; rm $lab/ans.txt || true
+    rm $lab/student-number.txt ; rm $lab/ans.txt || true > /dev/null
    for dir in $alernative_dirs; do 
     cp $code_path/$dir/student-number.txt $lab > /dev/null
     cp $code_path/$dir/ans.txt $lab > /dev/null
@@ -26,10 +26,20 @@ func_grade() {
 
 func_unzip() {
     name=$1
-    rm -rf $code_path ; mkdir $code_path ; (tar -xzvf out/$name.tar.gz -C $code_path || tar -xvf out/$name.tar.gz -C $code_path) > /dev/null
+    (rm -rf $code_path ; mkdir $code_path ; tar -xzvf out/$name.tar.gz -C $code_path || tar -xvf out/$name.tar.gz -C $code_path) > /dev/null
+}
+
+func_valid() {
+    id=$(echo $1 | sed -n 's/^\([0-9]*\).*/\1/p')
+    exp_id=$(cat $lab/student-number.txt)
+    if [[ ! "$id" = "$exp_id" ]]; then
+        echo "invalid in $1" 1>&2
+        exit 1
+    fi
 }
 
 name=522030910135陈元杰_415695_9548060_bomb-lab
+
 
 
 
@@ -37,12 +47,12 @@ func_eval_one_stu() {
     name=$1
     func_unzip $name
     func_import $name
-    func_grade $name
+    (func_valid $name && func_grade $name) || echo "failed"
 }
 
 # ./update-score.py $(echo $name | sed -n 's/^\([0-9]*\).*/\1/p') $(func_eval_one_stu $name)
 ids=$(find out -type f -name "*.tar.gz" | sed -n 's/^out\/\([0-9]*\).*/\1/p')
-# ids=523021910427
+# ids=522030910186
 for id in $ids; do
         name=$(find out -type f -name "$id*" | sed -n 's!.*/\([^/.]*\)\..*!\1!p')
         echo "Processing $name"
