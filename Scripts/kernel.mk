@@ -1,8 +1,13 @@
 V ?= 0
 Q := @
-
+GRADER_V :=
 ifeq ($(V), 1)
 	Q :=
+endif
+
+ifeq ($(V), 2)
+	Q :=
+	GRADER_V := -v
 endif
 
 BUILDDIR := $(LABDIR)/build
@@ -11,7 +16,7 @@ _QEMU := $(SCRIPTS)/qemu_wrapper.sh $(QEMU)
 QEMU_GDB_PORT := 1234
 QEMU_OPTS := -machine raspi3b -nographic -serial mon:stdio -m size=1G -kernel $(KERNEL_IMG)
 CHBUILD := $(SCRIPTS)/chbuild
-SERIAL := $(shell tr -dc A-Za-z0-9 </dev/urandom | head -c 13; echo)
+SERIAL := $(shell LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c 13; echo)
 
 export LABROOT LABDIR SCRIPTS LAB TIMEOUT
 
@@ -37,7 +42,7 @@ distclean:
 qemu: build
 	$(Q)$(_QEMU) $(QEMU_OPTS)
 
-qemu-grade: build
+qemu-grade:
 	$(SCRIPTS)/change_serial $(KERNEL_IMG) $(SERIAL)
 	$(Q)$(_QEMU) $(QEMU_OPTS)
 
@@ -48,8 +53,11 @@ qemu-gdb: build
 gdb:
 	$(Q)$(GDB) --nx -x $(SCRIPTS)/gdb/gdbinit
 
-grade:
-	$(MAKE) distclean
-	$(Q)$(DOCKER_RUN) $(GRADER) -t $(TIMEOUT) -f $(LABDIR)/scores.json -s $(SERIAL) make SERIAL=$(SERIAL) qemu-grade
+grade:  
+	$(Q)$(MAKE) distclean &> /dev/null
+	$(Q)(test -f ${LABDIR}/.config && cp ${LABDIR}/.config ${LABDIR}/.config.bak) || :
+	$(Q)$(MAKE) build
+	$(Q)$(DOCKER_RUN) $(GRADER) -t $(TIMEOUT) -f $(LABDIR)/scores.json $(GRADER_V) -s $(SERIAL) make SERIAL=$(SERIAL) qemu-grade
+	$(Q)(test -f ${LABDIR}/.config.bak && cp ${LABDIR}/.config.bak ${LABDIR}/.config && rm .config.bak) || :
 
 .PHONY: qemu qemu-gdb gdb defconfig build clean distclean grade all
